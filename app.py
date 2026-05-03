@@ -139,10 +139,23 @@ thread.start()
 
 def save_to_file(batch_copy):
     try:
+        temps = [b["temp"] for b in batch_copy]
+        hums = [b["hum"] for b in batch_copy]
+        motions = [b["motion"] for b in batch_copy]
+
+        from_time = batch_copy[0]["time"]
+        to_time = batch_copy[-1]["time"]
+
         with open(FILE_PATH, "a") as f:
-            for b in batch_copy:
-                f.write(f"{b['time']},{b['temp']},{b['hum']},{b['motion']}\n")
-        print(f"Saved batch of {len(batch_copy)} rows to file")
+            f.write(
+                f"{from_time},{to_time},"
+                f"{sum(temps)/len(temps)},"
+                f"{sum(hums)/len(hums)},"
+                f"{sum(motions)/len(motions)}\n"
+            )
+
+        print(f"Saved batch of {len(batch_copy)} rows to FILE (aggregated)")
+
     except Exception as e:
         print("FILE error:", e)
 
@@ -199,7 +212,10 @@ def save_batch():
         batch_copy = batch[:]
         batch.clear()
 
-    save_to_db(batch_copy)
+    try:
+        save_to_db(batch_copy)
+    except Exception as e:
+        print("DB FAILED → fallback to FILE only:", e)
     save_to_file(batch_copy)
 
 
@@ -209,18 +225,26 @@ def read_from_file(from_ts, to_ts):
     try:
         with open(FILE_PATH, "r") as f:
             for line in f:
-                t, temp, hum, motion = line.strip().split(",")
-                t = float(t)
+                parts = line.strip().split(",")
 
-                if from_ts <= t <= to_ts:
+                if len(parts) != 5:
+                    continue
+
+                from_t, to_t, temp, hum, motion = parts
+
+                from_t = float(from_t)
+
+                if from_ts <= from_t <= to_ts:
                     result.append({
-                        "from": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t)),
+                        "from": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(from_t)),
+                        "to": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(to_t))),
                         "temp": float(temp),
                         "hum": float(hum),
-                        "motion": int(motion)
+                        "motion": float(motion)
                     })
-    except:
-        pass
+    except Exception as e:
+        print("FILE READ error:", e)
+
     return result
 
 
@@ -230,7 +254,7 @@ def read_from_file(from_ts, to_ts):
 def index():
     with lock:
         current_data = data.copy()
-        
+
     if time.time() - last_data_time > DATA_TIMEOUT:
         current_data = {"temp": "-", "hum": "-", "motion": "-"}
 
@@ -321,6 +345,13 @@ def toggle_receive():
     global RECEIVE_ENABLED
     RECEIVE_ENABLED = not RECEIVE_ENABLED
     return jsonify({"enabled": RECEIVE_ENABLED})
+
+
+@app.route("/status")
+def status():
+    return jsonify({
+        "receive": RECEIVE_ENABLED
+    })
 
 
 if __name__ == "__main__":
