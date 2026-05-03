@@ -218,6 +218,9 @@ def save_batch():
         print("DB FAILED → fallback to FILE only:", e)
     save_to_file(batch_copy)
 
+    with lock:
+        last_insert_time = time.time()
+
 
 
 def read_from_file(from_ts, to_ts):
