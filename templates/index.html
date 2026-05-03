@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Smart room monitoring</title>
+    <script src="static/tailwind.js"></script>
+    <meta http-equiv="refresh" content="1" />
+  </head>
+
+  <body class="bg-gray-100 min-h-screen flex flex-col">
+    <header class="bg-blue-600 text-white p-4 shadow-md">
+      <div class="flex justify-center gap-4 mt-2">
+        <button
+          onclick="toggleReceive()"
+          class="px-4 py-2 rounded bg-yellow-500 text-white"
+        >
+          Toggle Receive
+        </button>
+      </div>
+      <h1 class="text-2xl font-bold text-center">Smart room monitoring</h1>
+    </header>
+    <nav class="bg-gray-900 text-white flex justify-center gap-2 p-3">
+      <a
+        href="/"
+        class="px-5 py-2 rounded transition {% if request.path == '/' %}bg-blue-500{% else %}hover:bg-gray-700{% endif %}"
+      >
+        📊 Dashboard
+      </a>
+
+      <a
+        href="/history"
+        class="px-5 py-2 rounded transition {% if request.path == '/history' %}bg-blue-500{% else %}hover:bg-gray-700{% endif %}"
+      >
+        📈 History
+      </a>
+    </nav>
+
+    <main class="flex-1 p-4 flex items-center">
+      <div class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Temperature -->
+        <div class="bg-white rounded-2xl shadow p-6 text-center">
+          <h2 class="text-gray-500 text-lg">Temperature</h2>
+          <p class="text-4xl font-bold mt-2 text-red-500">{{data.temp}} °C</p>
+        </div>
+
+        <!-- Humidity -->
+        <div class="bg-white rounded-2xl shadow p-6 text-center">
+          <h2 class="text-gray-500 text-lg">Humidity</h2>
+          <p class="text-4xl font-bold mt-2 text-blue-500">{{data.hum}} %</p>
+        </div>
+
+        <!-- Movement -->
+        <div
+          id="motionCard"
+          class="bg-white rounded-2xl shadow p-6 text-center cursor-pointer transition transform duration-150 active:scale-95"
+        >
+          <h2 class="text-gray-500 text-lg">Movement</h2>
+
+          {% if data.motion == 1 %}
+          <p class="text-2xl font-bold mt-4 text-red-600">🔴 Detected</p>
+          {% else %}
+          <p class="text-2xl font-bold mt-4 text-green-600">🟢 No movement</p>
+          {% endif %}
+        </div>
+      </div>
+    </main>
+
+    <footer class="text-center text-gray-500 p-4 text-sm">
+      ESP32 + Raspberry Pi dashboard
+    </footer>
+
+    <script src="static/jquery-3.6.0.min.js"></script>
+
+    <script>
+      $("#motionCard").on("dblclick", function () {
+        // visual feedback
+        $(this).addClass("scale-105 bg-blue-50");
+        setTimeout(() => {
+          $(this).removeClass("scale-105 bg-blue-50");
+        }, 200);
+
+        $.post("/trigger", function (res) {
+          console.log(res);
+        });
+      });
+
+      function toggleReceive() {
+        fetch("/toggle_receive", { method: "POST" });
+      }
+    </script>
+  </body>
+</html>

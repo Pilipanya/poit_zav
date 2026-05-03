@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Smart room monitoring</title>
+    <script src="static/tailwind.js"></script>
+    <script src="static/plotly-latest.min.js"></script>
+    <script src="static/gauge.min.js"></script>
+  </head>
+
+  <body class="bg-gray-100 min-h-screen flex flex-col">
+    <header class="bg-blue-600 text-white p-4 shadow-md">
+      <div class="flex justify-center gap-4 mt-2">
+        <button
+          onclick="toggleReceive()"
+          class="px-4 py-2 rounded bg-yellow-500 text-white"
+        >
+          Toggle Receive
+        </button>
+      </div>
+      <h1 class="text-2xl font-bold text-center">Smart room monitoring</h1>
+    </header>
+    <nav class="bg-gray-900 text-white flex justify-center gap-2 p-3">
+      <a
+        href="/"
+        class="px-5 py-2 rounded transition {% if request.path == '/' %}bg-blue-500{% else %}hover:bg-gray-700{% endif %}"
+      >
+        📊 Dashboard
+      </a>
+
+      <a
+        href="/history"
+        class="px-5 py-2 rounded transition {% if request.path == '/history' %}bg-blue-500{% else %}hover:bg-gray-700{% endif %}"
+      >
+        📈 History
+      </a>
+    </nav>
+    <div class="flex justify-center mt-2">
+      <div
+        id="liveBadge"
+        class="hidden items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-600 text-sm font-semibold border border-red-300"
+      >
+        <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+        LIVE
+      </div>
+    </div>
+
+    <div class="p-6 max-w-7xl mx-auto space-y-6">
+      <!-- FILTER CARD -->
+      <div
+        class="bg-white shadow rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-end"
+      >
+        <div>
+          <label class="text-sm text-gray-500">From</label>
+          <input type="datetime-local" id="from" class="border rounded p-2" />
+        </div>
+
+        <div>
+          <label class="text-sm text-gray-500">To</label>
+          <input type="datetime-local" id="to" class="border rounded p-2" />
+        </div>
+
+        <select onchange="setSource(this.value)" class="px-3 py-2 rounded">
+          <option value="db">Database</option>
+          <option value="file">File</option>
+        </select>
+
+        <button
+          id="loadBtn"
+          onclick="loadDataManual()"
+          class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Load
+        </button>
+
+        <button
+          id="autoBtn"
+          onclick="switchToAutoMode()"
+          class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+        >
+          Last 24h
+        </button>
+
+        <div
+          id="loading"
+          class="hidden flex items-center gap-2 text-sm text-gray-500"
+        >
+          <div
+            class="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"
+          ></div>
+          Loading data...
+        </div>
+      </div>
+
+      <!-- GAUGES -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white shadow rounded-2xl p-4 text-center">
+          <h2 class="text-gray-500 mb-2">Temperature</h2>
+          <canvas id="tempGauge"></canvas>
+        </div>
+
+        <div class="bg-white shadow rounded-2xl p-4 text-center">
+          <h2 class="text-gray-500 mb-2">Humidity</h2>
+          <canvas id="humGauge"></canvas>
+        </div>
+      </div>
+
+      <!-- CHART -->
+      <div class="bg-white shadow rounded-2xl p-4">
+        <div id="chart" class="w-full h-[400px]"></div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="bg-white shadow rounded-2xl overflow-auto max-h-[500px]">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-100 sticky top-0">
+            <tr>
+              <th class="p-2 text-left">Time</th>
+              <th class="p-2">Temp</th>
+              <th class="p-2">Hum</th>
+              <th class="p-2">Motion</th>
+            </tr>
+          </thead>
+          <tbody id="table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer class="text-center text-gray-500 p-4 text-sm">
+      ESP32 + Raspberry Pi dashboard
+    </footer>
+
+    <script src="static/jquery-3.6.0.min.js"></script>
+    <script>
+      let autoMode = true;
+      let intervalId = null;
+      let loading = false;
+      let tempGauge, humGauge;
+
+      function initGauges() {
+        tempGauge = new RadialGauge({
+          renderTo: "tempGauge",
+          width: 250,
+          height: 250,
+          units: "°C",
+          minValue: 0,
+          maxValue: 50,
+          majorTicks: ["0", "10", "20", "30", "40", "50"],
+          minorTicks: 2,
+          strokeTicks: true,
+          highlights: [{ from: 30, to: 50, color: "rgba(200,50,50,.75)" }],
+          colorPlate: "#fff",
+          borders: false,
+          needleType: "arrow",
+          animationDuration: 1000,
+        }).draw();
+
+        humGauge = new RadialGauge({
+          renderTo: "humGauge",
+          width: 250,
+          height: 250,
+          units: "%",
+          minValue: 0,
+          maxValue: 100,
+          majorTicks: ["0", "20", "40", "60", "80", "100"],
+          minorTicks: 2,
+          strokeTicks: true,
+          highlights: [{ from: 70, to: 100, color: "rgba(50,50,200,.75)" }],
+          colorPlate: "#fff",
+          borders: false,
+          needleType: "arrow",
+          animationDuration: 1000,
+        }).draw();
+      }
+
+      function formatLocalTime(dateString) {
+        let d = new Date(dateString);
+        return d.toLocaleString("sk-SK", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      }
+
+      function toLocalInputValue(date) {
+        const offset = date.getTimezoneOffset();
+        const local = new Date(date.getTime() - offset * 60000);
+        return local.toISOString().slice(0, 16);
+      }
+      function setAutoRange() {
+        let now = new Date();
+        let past = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+        $("#to").val(toLocalInputValue(now));
+        $("#from").val(toLocalInputValue(past));
+      }
+
+      function switchToManualMode() {
+        if (!autoMode) return;
+
+        autoMode = false;
+        updateLiveUI();
+        $("#autoBtn").removeClass("shadow-lg shadow-red-400/50");
+
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+
+        console.log("Manual mode activated");
+      }
+
+      function switchToAutoMode() {
+        autoMode = true;
+        updateLiveUI();
+        $("#autoBtn").addClass("shadow-lg shadow-red-400/50");
+
+        setAutoRange();
+
+        if (intervalId) clearInterval(intervalId);
+
+        loadData();
+        intervalId = setInterval(() => {
+          if (!autoMode) return;
+
+          setAutoRange();
+          loadData();
+        }, 20000);
+      }
+
+      $("#from, #to").on("focus", function () {
+        switchToManualMode();
+      });
+
+      $("#from, #to").on("change", function () {
+        switchToManualMode();
+      });
+
+      function loadDataManual() {
+        switchToManualMode();
+        loadData();
+      }
+
+      function setLoadingUI(state) {
+        loading = state;
+
+        $("#loading").toggleClass("hidden", !state);
+
+        $("#loadBtn").prop("disabled", state).toggleClass("opacity-50", state);
+        $("#autoBtn").prop("disabled", state).toggleClass("opacity-50", state);
+      }
+
+      function updateLiveUI() {
+        if (autoMode) {
+          $("#liveBadge").removeClass("hidden").addClass("flex");
+
+          $("#autoBtn")
+            .addClass("ring-2 ring-red-400 ring-offset-2")
+            .removeClass("opacity-60");
+        } else {
+          $("#liveBadge").addClass("hidden").removeClass("flex");
+
+          $("#autoBtn").removeClass("ring-2 ring-red-400 ring-offset-2");
+        }
+      }
+
+      let lastTime = null;
+
+      function loadData() {
+        if (loading) return;
+        setLoadingUI(true);
+
+        let from = $("#from").val();
+        let to = $("#to").val();
+
+        if (!from || !to) {
+          setLoadingUI(false);
+          return;
+        }
+
+        $.get("/api/history", { from: from, to: to }, function (data) {
+          let times = data.map((d) => formatLocalTime(d.from));
+          let temp = data.map((d) => d.temp);
+          let hum = data.map((d) => d.hum);
+          let motion = data.map((d) => d.motion);
+
+          Plotly.react(
+            "chart",
+            [
+              {
+                x: times,
+                y: temp,
+                name: "Temp",
+                mode: "lines+markers",
+              },
+              {
+                x: times,
+                y: hum,
+                name: "Humidity",
+                mode: "lines+markers",
+              },
+              {
+                x: times,
+                y: motion,
+                name: "Motion",
+                mode: "lines+markers",
+              },
+            ],
+            {
+              responsive: true,
+            },
+            {
+              displaylogo: false,
+              displayModeBar: false,
+            },
+          );
+
+          let html = "";
+          [...data].reverse().forEach((d) => {
+            let motionVal = parseFloat(d.motion);
+            let bg = "";
+            if (motionVal > 0.9) {
+              bg = "bg-orange-300 font-semibold";
+            } else if (motionVal > 0) {
+              bg = "bg-orange-100";
+            }
+            html += `
+                        <tr class="${bg}">
+                            <td class="p-2">${formatLocalTime(d.from)}</td>
+                            <td class="p-2 text-center">${d.temp}</td>
+                            <td class="p-2 text-center">${d.hum}</td>
+                            <td class="p-2 text-center">${d.motion}</td>
+                        </tr>
+                    `;
+          });
+
+          $("#table").html(html);
+
+          if (data.length > 0) {
+            let last = data[data.length - 1];
+
+            lastTime = last.from;
+
+            if (tempGauge && humGauge) {
+              tempGauge.value = last.temp;
+              humGauge.value = last.hum;
+            }
+          }
+        }).always(function () {
+          setLoadingUI(false);
+        });
+      }
+
+      $(document).ready(function () {
+        initGauges();
+        switchToAutoMode();
+      });
+    </script>
+  </body>
+</html>
