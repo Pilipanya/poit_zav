@@ -283,6 +283,8 @@ def api_history():
     try:
         from_str = request.args.get("from")
         to_str = request.args.get("to")
+        source = request.args.get("source", "db")
+
 
         from_ts = time.mktime(time.strptime(from_str, '%Y-%m-%dT%H:%M'))
         to_ts = time.mktime(time.strptime(to_str, '%Y-%m-%dT%H:%M'))
@@ -292,7 +294,7 @@ def api_history():
         return jsonify([])
     
 
-    if DATA_SOURCE == "file":
+    if source == "file":
         return jsonify(read_from_file(from_ts, to_ts))
 
     rows = []
@@ -335,15 +337,6 @@ def api_history():
         })
 
     return jsonify(result)
-
-
-@app.route("/set_source", methods=["POST"])
-def set_source():
-    global DATA_SOURCE
-    src = request.json.get("source")
-    if src in ["db", "file"]:
-        DATA_SOURCE = src
-    return jsonify({"source": DATA_SOURCE})
 
 
 @app.route("/toggle_receive", methods=["POST"])

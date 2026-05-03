@@ -61,7 +61,7 @@
           <input type="datetime-local" id="to" class="border rounded p-2" />
         </div>
 
-        <select onchange="setSource(this.value)" class="px-3 py-2 rounded">
+        <select id="sourceSelect" class="px-3 py-2 rounded">
           <option value="db">Database</option>
           <option value="file">File</option>
         </select>
@@ -276,59 +276,63 @@
 
         let from = $("#from").val();
         let to = $("#to").val();
+        let source = $("#sourceSelect").val();
 
         if (!from || !to) {
           setLoadingUI(false);
           return;
         }
 
-        $.get("/api/history", { from: from, to: to }, function (data) {
-          let times = data.map((d) => formatLocalTime(d.from));
-          let temp = data.map((d) => d.temp);
-          let hum = data.map((d) => d.hum);
-          let motion = data.map((d) => d.motion);
+        $.get(
+          "/api/history",
+          { from: from, to: to, source: source },
+          function (data) {
+            let times = data.map((d) => formatLocalTime(d.from));
+            let temp = data.map((d) => d.temp);
+            let hum = data.map((d) => d.hum);
+            let motion = data.map((d) => d.motion);
 
-          Plotly.react(
-            "chart",
-            [
+            Plotly.react(
+              "chart",
+              [
+                {
+                  x: times,
+                  y: temp,
+                  name: "Temp",
+                  mode: "lines+markers",
+                },
+                {
+                  x: times,
+                  y: hum,
+                  name: "Humidity",
+                  mode: "lines+markers",
+                },
+                {
+                  x: times,
+                  y: motion,
+                  name: "Motion",
+                  mode: "lines+markers",
+                },
+              ],
               {
-                x: times,
-                y: temp,
-                name: "Temp",
-                mode: "lines+markers",
+                responsive: true,
               },
               {
-                x: times,
-                y: hum,
-                name: "Humidity",
-                mode: "lines+markers",
+                displaylogo: false,
+                displayModeBar: false,
               },
-              {
-                x: times,
-                y: motion,
-                name: "Motion",
-                mode: "lines+markers",
-              },
-            ],
-            {
-              responsive: true,
-            },
-            {
-              displaylogo: false,
-              displayModeBar: false,
-            },
-          );
+            );
 
-          let html = "";
-          [...data].reverse().forEach((d) => {
-            let motionVal = parseFloat(d.motion);
-            let bg = "";
-            if (motionVal > 0.9) {
-              bg = "bg-orange-300 font-semibold";
-            } else if (motionVal > 0) {
-              bg = "bg-orange-100";
-            }
-            html += `
+            let html = "";
+            [...data].reverse().forEach((d) => {
+              let motionVal = parseFloat(d.motion);
+              let bg = "";
+              if (motionVal > 0.9) {
+                bg = "bg-orange-300 font-semibold";
+              } else if (motionVal > 0) {
+                bg = "bg-orange-100";
+              }
+              html += `
                         <tr class="${bg}">
                             <td class="p-2">${formatLocalTime(d.from)}</td>
                             <td class="p-2 text-center">${d.temp}</td>
@@ -336,39 +340,29 @@
                             <td class="p-2 text-center">${d.motion}</td>
                         </tr>
                     `;
-          });
+            });
 
-          $("#table").html(html);
+            $("#table").html(html);
 
-          if (data.length > 0) {
-            let last = data[data.length - 1];
+            if (data.length > 0) {
+              let last = data[data.length - 1];
 
-            lastTime = last.from;
+              lastTime = last.from;
 
-            if (tempGauge && humGauge) {
-              tempGauge.value = last.temp;
-              humGauge.value = last.hum;
+              if (tempGauge && humGauge) {
+                tempGauge.value = last.temp;
+                humGauge.value = last.hum;
+              }
             }
-          }
-        }).always(function () {
+          },
+        ).always(function () {
           setLoadingUI(false);
         });
       }
 
-      function setSource(src) {
-        fetch("/set_source", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ source: src }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            console.log("SOURCE SET:", data.source);
-            loadData();
-          });
-      }
+      $("#sourceSelect").on("change", function () {
+        loadData();
+      });
 
       function toggleReceive() {
         fetch("/toggle_receive", { method: "POST" })
