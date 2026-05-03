@@ -280,8 +280,17 @@ def history():
 
 @app.route("/api/history")
 def api_history():
-    from_ts = time.mktime(time.strptime(request.args.get("from"), '%Y-%m-%dT%H:%M'))
-    to_ts = time.mktime(time.strptime(request.args.get("to"), '%Y-%m-%dT%H:%M'))
+    try:
+        from_str = request.args.get("from")
+        to_str = request.args.get("to")
+
+        from_ts = time.mktime(time.strptime(from_str, '%Y-%m-%dT%H:%M'))
+        to_ts = time.mktime(time.strptime(to_str, '%Y-%m-%dT%H:%M'))
+
+    except Exception as e:
+        print("TIME PARSE ERROR:", e)
+        return jsonify([])
+    
 
     if DATA_SOURCE == "file":
         return jsonify(read_from_file(from_ts, to_ts))
@@ -291,21 +300,18 @@ def api_history():
         conn = get_db()
         cur = conn.cursor()
 
-        from_date = request.args.get("from")
-        to_date = request.args.get("to")
-
-        if not to_date:
+        if not to_str:
             query = """
             SELECT * FROM sensor_data
             WHERE from_time BETWEEN %s AND DATE_ADD(%s, INTERVAL 5 MINUTE)
             """
-            cur.execute(query, (from_date, from_date))
+            cur.execute(query, (from_str, from_str))
         else:
             query = """
             SELECT * FROM sensor_data
             WHERE from_time BETWEEN %s AND %s
             """
-            cur.execute(query, (from_date, to_date))
+            cur.execute(query, (from_str, to_str))
 
         rows = cur.fetchall()
     except Exception as e:

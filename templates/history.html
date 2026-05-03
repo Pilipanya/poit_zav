@@ -355,6 +355,21 @@
         });
       }
 
+      function setSource(src) {
+        fetch("/set_source", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ source: src }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            console.log("SOURCE SET:", data.source);
+            loadData();
+          });
+      }
+
       function toggleReceive() {
         fetch("/toggle_receive", { method: "POST" })
           .then((res) => res.json())
