@@ -95,14 +95,18 @@
 
       <!-- GAUGES -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="bg-white shadow rounded-2xl p-4 text-center">
+        <div class="bg-white shadow rounded-2xl p-4 flex flex-col items-center">
           <h2 class="text-gray-500 mb-2">Temperature</h2>
-          <canvas id="tempGauge"></canvas>
+          <div class="w-full flex justify-center">
+            <canvas id="tempGauge" class="max-w-full"></canvas>
+          </div>
         </div>
 
-        <div class="bg-white shadow rounded-2xl p-4 text-center">
+        <div class="bg-white shadow rounded-2xl p-4 flex flex-col items-center">
           <h2 class="text-gray-500 mb-2">Humidity</h2>
-          <canvas id="humGauge"></canvas>
+          <div class="w-full flex justify-center">
+            <canvas id="humGauge" class="max-w-full"></canvas>
+          </div>
         </div>
       </div>
 
@@ -119,9 +123,9 @@
               <th class="p-2 text-left">Date</th>
               <th class="p-2 text-left">Time From</th>
               <th class="p-2 text-left">Time To</th>
-              <th class="p-2">Temp</th>
-              <th class="p-2">Hum</th>
-              <th class="p-2">Motion</th>
+              <th class="p-2">Temp (°C)</th>
+              <th class="p-2">Hum (%)</th>
+              <th class="p-2">Motion (0/1)</th>
             </tr>
           </thead>
           <tbody id="table"></tbody>
@@ -146,6 +150,8 @@
       }
 
       function initGauges() {
+        const gaugeSize = Math.min(260, window.innerWidth - 80);
+
         if (typeof RadialGauge === "undefined") {
           $("#tempGauge").closest(".bg-white").append(
             '<p class="text-sm text-gray-500 mt-2">Gauge library is not loaded.</p>',
@@ -158,8 +164,8 @@
 
         tempGauge = new RadialGauge({
           renderTo: "tempGauge",
-          width: 260,
-          height: 260,
+          width: gaugeSize,
+          height: gaugeSize,
           units: "°C",
           title: "Temperature",
           minValue: 0,
@@ -197,8 +203,8 @@
 
         humGauge = new RadialGauge({
           renderTo: "humGauge",
-          width: 260,
-          height: 260,
+          width: gaugeSize,
+          height: gaugeSize,
           units: "%",
           title: "Humidity",
           minValue: 0,
@@ -231,7 +237,7 @@
           fontTitleSize: 18,
           fontUnitsSize: 16,
           fontNumbersSize: 14,
-          valueInt: 3,
+          valueInt: 2,
           valueDec: 1,
         }).draw();
       }
@@ -434,12 +440,16 @@
                 // Realtime: show the most recent measurement
                 let last = data[data.length - 1];
                 lastTime = last.from;
+                tempGauge.update({ title: "Temp · Latest data" });
+                humGauge.update({ title: "Humidity · Latest data" });
                 setGaugeValue(tempGauge, last.temp);
                 setGaugeValue(humGauge, last.hum);
               } else {
                 // Manual period: show the average over the selected range
                 let avgTemp = temp.reduce((a, b) => a + b, 0) / temp.length;
                 let avgHum  = hum.reduce((a, b) => a + b, 0) / hum.length;
+                tempGauge.update({ title: "Temp · Period average" });
+                humGauge.update({ title: "Humidity · Period average" });
                 setGaugeValue(tempGauge, avgTemp);
                 setGaugeValue(humGauge, avgHum);
               }
