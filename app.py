@@ -62,6 +62,8 @@ def connect_serial():
 
 def read_serial():
     global last_data_time
+    ignore_until = 0  # timestamp until which incoming data is discarded
+
     while True:
         if not RECEIVE_ENABLED:
             time.sleep(1)
@@ -72,7 +74,17 @@ def read_serial():
             time.sleep(2)
             continue
 
-        print("Serial connected")
+        # Discard any bytes already sitting in the serial input buffer
+        # (accumulated while the device was off or reconnecting).
+        try:
+            ser.reset_input_buffer()
+        except Exception:
+            pass
+
+        # Ignore the first 5 seconds of data after every (re)connect
+        # to avoid a burst of stale buffered messages being saved.
+        ignore_until = time.time() + 5
+        print("Serial connected – warming up for 5 s")
         buffer = ""
 
         while True:
@@ -105,13 +117,25 @@ def read_serial():
                             h = float(parts[1].split(":")[1])
                             m = int(parts[2].split(":")[1])
 
+                            now = time.time()
+
+                            # Still in warmup window – update live display
+                            # but do NOT add to batch (nothing gets saved).
+                            if now < ignore_until:
+                                with lock:
+                                    data["temp"] = t
+                                    data["hum"] = h
+                                    data["motion"] = m
+                                    last_data_time = now
+                                continue
+
                             with lock:
                                 data["temp"] = t
                                 data["hum"] = h
                                 data["motion"] = m
-                                last_data_time = time.time()
+                                last_data_time = now
                                 batch.append({
-                                    "time": time.time(),
+                                    "time": now,
                                     "temp": t,
                                     "hum": h,
                                     "motion": m
@@ -208,7 +232,7 @@ def save_to_db(batch_copy):
             print("Skipped duplicate DB row")
             with lock:
                 last_insert_time = time.time()
-            return
+            return False  # signal: dedupe rejected, skip file too
 
         cur.execute(query, (
             from_dt,
@@ -224,6 +248,8 @@ def save_to_db(batch_copy):
 
         with lock:
             last_insert_time = time.time()
+
+        return True  # signal: successfully saved
     except Exception as e:
         print("DB error:", e)
     finally:
@@ -244,11 +270,16 @@ def save_batch():
         batch_copy = batch[:]
         batch.clear()
 
+    db_saved = False
     try:
-        save_to_db(batch_copy)
+        db_saved = save_to_db(batch_copy)
     except Exception as e:
         print("DB FAILED → fallback to FILE only:", e)
-    save_to_file(batch_copy)
+
+    # Only write to file when DB actually accepted the row
+    # (or failed outright). Skip file when DB dedupe rejected it.
+    if db_saved is not False:
+        save_to_file(batch_copy)
 
     with lock:
         last_insert_time = time.time()
