@@ -229,7 +229,7 @@
 
           setAutoRange();
           loadData();
-        }, 20000);
+        }, 30000);
       }
 
       $("#from, #to").on("focus", function () {
@@ -288,9 +288,9 @@
           { from: from, to: to, source: source },
           function (data) {
             let times = data.map((d) => formatLocalTime(d.from));
-            let temp = data.map((d) => d.temp);
-            let hum = data.map((d) => d.hum);
-            let motion = data.map((d) => d.motion);
+            let temp = data.map((d) => Number(d.temp));
+            let hum = data.map((d) => Number(d.hum));
+            let motion = data.map((d) => Number(d.motion));
 
             Plotly.react(
               "chart",
@@ -335,9 +335,9 @@
               html += `
                         <tr class="${bg}">
                             <td class="p-2">${formatLocalTime(d.from)}</td>
-                            <td class="p-2 text-center">${d.temp}</td>
-                            <td class="p-2 text-center">${d.hum}</td>
-                            <td class="p-2 text-center">${d.motion}</td>
+                      <td class="p-2 text-center">${Number(d.temp).toFixed(3)}</td>
+                      <td class="p-2 text-center">${Number(d.hum).toFixed(3)}</td>
+                      <td class="p-2 text-center">${Number(d.motion).toFixed(3)}</td>
                         </tr>
                     `;
             });
@@ -361,6 +361,9 @@
       }
 
       $("#sourceSelect").on("change", function () {
+        if (autoMode) {
+          setAutoRange();
+        }
         loadData();
       });
 

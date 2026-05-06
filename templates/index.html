@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <title>Smart room monitoring</title>
     <script src="static/tailwind.js"></script>
-    <meta http-equiv="refresh" content="1" />
   </head>
 
   <body class="bg-gray-100 min-h-screen flex flex-col">
@@ -41,13 +40,13 @@
         <!-- Temperature -->
         <div class="bg-white rounded-2xl shadow p-6 text-center">
           <h2 class="text-gray-500 text-lg">Temperature</h2>
-          <p class="text-4xl font-bold mt-2 text-red-500">{{data.temp}} °C</p>
+          <p id="tempValue" class="text-4xl font-bold mt-2 text-red-500">{{data.temp}} °C</p>
         </div>
 
         <!-- Humidity -->
         <div class="bg-white rounded-2xl shadow p-6 text-center">
           <h2 class="text-gray-500 text-lg">Humidity</h2>
-          <p class="text-4xl font-bold mt-2 text-blue-500">{{data.hum}} %</p>
+          <p id="humValue" class="text-4xl font-bold mt-2 text-blue-500">{{data.hum}} %</p>
         </div>
 
         <!-- Movement -->
@@ -56,12 +55,9 @@
           class="bg-white rounded-2xl shadow p-6 text-center cursor-pointer transition transform duration-150 active:scale-95"
         >
           <h2 class="text-gray-500 text-lg">Movement</h2>
-
-          {% if data.motion == 1 %}
-          <p class="text-2xl font-bold mt-4 text-red-600">🔴 Detected</p>
-          {% else %}
-          <p class="text-2xl font-bold mt-4 text-green-600">🟢 No movement</p>
-          {% endif %}
+          <p id="motionValue" class="text-2xl font-bold mt-4 {% if data.motion == 1 %}text-red-600{% else %}text-green-600{% endif %}">
+            {% if data.motion == 1 %}🔴 Detected{% else %}🟢 No movement{% endif %}
+          </p>
         </div>
       </div>
     </main>
@@ -113,8 +109,47 @@
           });
       }
 
+      function updateCurrentData(payload) {
+        const tempEl = $("#tempValue");
+        const humEl = $("#humValue");
+        const motionEl = $("#motionValue");
+
+        if (payload.temp === null || payload.hum === null || payload.motion === null) {
+          tempEl.text("- °C");
+          humEl.text("- %");
+          motionEl
+            .text("⚪ No data")
+            .removeClass("text-red-600 text-green-600")
+            .addClass("text-gray-500");
+          return;
+        }
+
+        tempEl.text(`${Number(payload.temp).toFixed(3)} °C`);
+        humEl.text(`${Number(payload.hum).toFixed(3)} %`);
+
+        if (Number(payload.motion) >= 1) {
+          motionEl
+            .text("🔴 Detected")
+            .removeClass("text-green-600 text-gray-500")
+            .addClass("text-red-600");
+        } else {
+          motionEl
+            .text("🟢 No movement")
+            .removeClass("text-red-600 text-gray-500")
+            .addClass("text-green-600");
+        }
+      }
+
+      function loadCurrentData() {
+        $.get("/api/current", function (res) {
+          updateCurrentData(res);
+        });
+      }
+
       $(document).ready(function () {
         loadStatus();
+        loadCurrentData();
+        setInterval(loadCurrentData, 1000);
       });
     </script>
   </body>

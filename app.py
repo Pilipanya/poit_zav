@@ -30,6 +30,10 @@ config.read("config.cfg")
 app = Flask(__name__)
 
 
+def round3(value):
+    return round(float(value), 3)
+
+
 def get_db():
     return MySQLdb.connect(
         host=config.get("mysqlDB", "host"),
@@ -149,9 +153,9 @@ def save_to_file(batch_copy):
         with open(FILE_PATH, "a") as f:
             f.write(
                 f"{from_time},{to_time},"
-                f"{sum(temps)/len(temps)},"
-                f"{sum(hums)/len(hums)},"
-                f"{sum(motions)/len(motions)}\n"
+                f"{round3(sum(temps)/len(temps))},"
+                f"{round3(sum(hums)/len(hums))},"
+                f"{round3(sum(motions)/len(motions))}\n"
             )
 
         print(f"Saved batch of {len(batch_copy)} rows to FILE (aggregated)")
@@ -178,12 +182,15 @@ def save_to_db(batch_copy):
         (from_time, to_time, temp_avg, hum_avg, motion_avg)
         VALUES (%s, %s, %s, %s, %s)
         """
+        temp_avg = round3(sum(temps) / len(temps))
+        hum_avg = round3(sum(hums) / len(hums))
+        motion_avg = round3(sum(motions) / len(motions))
         cur.execute(query, (
             time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(from_time)),
             time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(to_time)),
-            sum(temps) / len(temps),
-            sum(hums) / len(hums),
-            sum(motions) / len(motions)
+            temp_avg,
+            hum_avg,
+            motion_avg
         ))
 
         conn.commit()
@@ -236,14 +243,16 @@ def read_from_file(from_ts, to_ts):
                 from_t, to_t, temp, hum, motion = parts
 
                 from_t = float(from_t)
+                to_t = float(to_t)
 
-                if from_ts <= from_t <= to_ts:
+                # Include any record that overlaps requested window.
+                if from_t <= to_ts and to_t >= from_ts:
                     result.append({
                         "from": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(from_t)),
-                        "to": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(to_t))),
-                        "temp": float(temp),
-                        "hum": float(hum),
-                        "motion": float(motion)
+                        "to": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(to_t)),
+                        "temp": round3(temp),
+                        "hum": round3(hum),
+                        "motion": round3(motion)
                     })
     except Exception as e:
         print("FILE READ error:", e)
@@ -262,6 +271,17 @@ def index():
         current_data = {"temp": "-", "hum": "-", "motion": "-"}
 
     return render_template("index.html", data=current_data, request=request)
+
+
+@app.route("/api/current")
+def api_current():
+    with lock:
+        current_data = data.copy()
+
+    if time.time() - last_data_time > DATA_TIMEOUT:
+        current_data = {"temp": None, "hum": None, "motion": None}
+
+    return jsonify(current_data)
 
 
 @app.route("/trigger", methods=["POST"])
@@ -288,9 +308,15 @@ def api_history():
         to_str = request.args.get("to")
         source = request.args.get("source", "db")
 
+        if not from_str or not to_str:
+            return jsonify([])
 
         from_ts = time.mktime(time.strptime(from_str, '%Y-%m-%dT%H:%M'))
         to_ts = time.mktime(time.strptime(to_str, '%Y-%m-%dT%H:%M'))
+
+        if from_ts > to_ts:
+            from_ts, to_ts = to_ts, from_ts
+            from_str, to_str = to_str, from_str
 
     except Exception as e:
         print("TIME PARSE ERROR:", e)
@@ -305,18 +331,12 @@ def api_history():
         conn = get_db()
         cur = conn.cursor()
 
-        if not to_str:
-            query = """
-            SELECT * FROM sensor_data
-            WHERE from_time BETWEEN %s AND DATE_ADD(%s, INTERVAL 5 MINUTE)
-            """
-            cur.execute(query, (from_str, from_str))
-        else:
-            query = """
-            SELECT * FROM sensor_data
-            WHERE from_time BETWEEN %s AND %s
-            """
-            cur.execute(query, (from_str, to_str))
+        query = """
+        SELECT * FROM sensor_data
+        WHERE from_time BETWEEN %s AND %s
+        ORDER BY from_time ASC
+        """
+        cur.execute(query, (from_str, to_str))
 
         rows = cur.fetchall()
     except Exception as e:
@@ -334,9 +354,9 @@ def api_history():
         result.append({
             "from": str(r[1]),
             "to": str(r[2]),
-            "temp": r[3],
-            "hum": r[4],
-            "motion": r[5]
+            "temp": round3(r[3]),
+            "hum": round3(r[4]),
+            "motion": round3(r[5])
         })
 
     return jsonify(result)
