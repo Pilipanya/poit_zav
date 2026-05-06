@@ -5,7 +5,7 @@
     <title>Smart room monitoring</title>
     <script src="static/tailwind.js"></script>
     <script src="static/plotly-latest.min.js"></script>
-    <script src="static/gauge.min.js"></script>
+    <script src="static/gauge2.min.js"></script>
   </head>
 
   <body class="bg-gray-100 min-h-screen flex flex-col">
@@ -142,90 +142,94 @@
 
       function setGaugeValue(gauge, value) {
         if (!gauge) return;
-
-        if (typeof gauge.set === "function") {
-          gauge.set(Number(value));
-          return;
-        }
-
         gauge.value = Number(value);
       }
 
       function initGauges() {
-        if (typeof RadialGauge !== "undefined") {
-          tempGauge = new RadialGauge({
-            renderTo: "tempGauge",
-            width: 250,
-            height: 250,
-            units: "°C",
-            minValue: 0,
-            maxValue: 50,
-            majorTicks: ["0", "10", "20", "30", "40", "50"],
-            minorTicks: 2,
-            strokeTicks: true,
-            highlights: [{ from: 30, to: 50, color: "rgba(200,50,50,.75)" }],
-            colorPlate: "#fff",
-            borders: false,
-            needleType: "arrow",
-            animationDuration: 1000,
-          }).draw();
-
-          humGauge = new RadialGauge({
-            renderTo: "humGauge",
-            width: 250,
-            height: 250,
-            units: "%",
-            minValue: 0,
-            maxValue: 100,
-            majorTicks: ["0", "20", "40", "60", "80", "100"],
-            minorTicks: 2,
-            strokeTicks: true,
-            highlights: [{ from: 70, to: 100, color: "rgba(50,50,200,.75)" }],
-            colorPlate: "#fff",
-            borders: false,
-            needleType: "arrow",
-            animationDuration: 1000,
-          }).draw();
+        if (typeof RadialGauge === "undefined") {
+          $("#tempGauge").closest(".bg-white").append(
+            '<p class="text-sm text-gray-500 mt-2">Gauge library is not loaded.</p>',
+          );
+          $("#humGauge").closest(".bg-white").append(
+            '<p class="text-sm text-gray-500 mt-2">Gauge library is not loaded.</p>',
+          );
           return;
         }
 
-        if (typeof Gauge !== "undefined") {
-          tempGauge = new Gauge(document.getElementById("tempGauge")).setOptions({
-            angle: 0.15,
-            lineWidth: 0.2,
-            pointer: { length: 0.55, strokeWidth: 0.04, color: "#111827" },
-            colorStart: "#ef4444",
-            colorStop: "#fca5a5",
-            strokeColor: "#e5e7eb",
-            generateGradient: true,
-          });
-          tempGauge.maxValue = 50;
-          tempGauge.setMinValue(0);
-          tempGauge.animationSpeed = 32;
-          tempGauge.set(0);
+        tempGauge = new RadialGauge({
+          renderTo: "tempGauge",
+          width: 260,
+          height: 260,
+          units: "°C",
+          title: "Temperature",
+          minValue: 0,
+          maxValue: 50,
+          majorTicks: ["0", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50"],
+          minorTicks: 4,
+          strokeTicks: true,
+          highlights: [
+            { from: 0,  to: 10, color: "rgba(100,149,237,0.4)" },
+            { from: 10, to: 25, color: "rgba(100,200,100,0.4)" },
+            { from: 25, to: 35, color: "rgba(255,165,0,0.4)" },
+            { from: 35, to: 50, color: "rgba(200,50,50,0.6)" },
+          ],
+          colorPlate: "#fff",
+          colorNeedle: "#c0392b",
+          colorNeedleEnd: "",
+          borders: true,
+          borderShadowWidth: 0,
+          borderOuterWidth: 1,
+          borderMiddleWidth: 0,
+          borderInnerWidth: 1,
+          needleType: "arrow",
+          needleWidth: 3,
+          needleCircleSize: 7,
+          needleCircleOuter: true,
+          needleCircleInner: false,
+          animationDuration: 800,
+          animationRule: "linear",
+          fontTitleSize: 18,
+          fontUnitsSize: 16,
+          fontNumbersSize: 14,
+        }).draw();
 
-          humGauge = new Gauge(document.getElementById("humGauge")).setOptions({
-            angle: 0.15,
-            lineWidth: 0.2,
-            pointer: { length: 0.55, strokeWidth: 0.04, color: "#111827" },
-            colorStart: "#3b82f6",
-            colorStop: "#93c5fd",
-            strokeColor: "#e5e7eb",
-            generateGradient: true,
-          });
-          humGauge.maxValue = 100;
-          humGauge.setMinValue(0);
-          humGauge.animationSpeed = 32;
-          humGauge.set(0);
-          return;
-        }
-
-        $("#tempGauge").closest(".bg-white").append(
-          '<p class="text-sm text-gray-500 mt-2">Gauge library is not loaded.</p>',
-        );
-        $("#humGauge").closest(".bg-white").append(
-          '<p class="text-sm text-gray-500 mt-2">Gauge library is not loaded.</p>',
-        );
+        humGauge = new RadialGauge({
+          renderTo: "humGauge",
+          width: 260,
+          height: 260,
+          units: "%",
+          title: "Humidity",
+          minValue: 0,
+          maxValue: 100,
+          majorTicks: ["0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"],
+          minorTicks: 4,
+          strokeTicks: true,
+          highlights: [
+            { from: 0,  to: 20, color: "rgba(200,50,50,0.4)" },
+            { from: 20, to: 40, color: "rgba(255,165,0,0.4)" },
+            { from: 40, to: 60, color: "rgba(100,200,100,0.4)" },
+            { from: 60, to: 80, color: "rgba(100,149,237,0.4)" },
+            { from: 80, to: 100, color: "rgba(50,50,200,0.5)" },
+          ],
+          colorPlate: "#fff",
+          colorNeedle: "#2980b9",
+          colorNeedleEnd: "",
+          borders: true,
+          borderShadowWidth: 0,
+          borderOuterWidth: 1,
+          borderMiddleWidth: 0,
+          borderInnerWidth: 1,
+          needleType: "arrow",
+          needleWidth: 3,
+          needleCircleSize: 7,
+          needleCircleOuter: true,
+          needleCircleInner: false,
+          animationDuration: 800,
+          animationRule: "linear",
+          fontTitleSize: 18,
+          fontUnitsSize: 16,
+          fontNumbersSize: 14,
+        }).draw();
       }
 
       function formatLocalTime(dateString) {
@@ -367,32 +371,18 @@
             Plotly.react(
               "chart",
               [
-                {
-                  x: times,
-                  y: temp,
-                  name: "Temp",
-                  mode: "lines+markers",
-                },
-                {
-                  x: times,
-                  y: hum,
-                  name: "Humidity",
-                  mode: "lines+markers",
-                },
-                {
-                  x: times,
-                  y: motion,
-                  name: "Motion",
-                  mode: "lines+markers",
-                },
+                { x: times, y: temp,   name: "Temp (°C)",   mode: "lines+markers", line: { color: "#ef4444" } },
+                { x: times, y: hum,    name: "Humidity (%)", mode: "lines+markers", line: { color: "#3b82f6" } },
+                { x: times, y: motion, name: "Motion",       mode: "lines+markers", line: { color: "#f59e0b" } },
               ],
               {
                 responsive: true,
+                xaxis: { title: { text: "Time" } },
+                yaxis: { title: { text: "Value" } },
+                legend: { orientation: "h", y: -0.2 },
+                margin: { t: 20 },
               },
-              {
-                displaylogo: false,
-                displayModeBar: false,
-              },
+              { displaylogo: false, displayModeBar: false },
             );
 
             let html = "";
@@ -418,14 +408,19 @@
 
             $("#table").html(html);
 
-            if (data.length > 0) {
-              let last = data[data.length - 1];
-
-              lastTime = last.from;
-
-              if (tempGauge && humGauge) {
+            if (data.length > 0 && tempGauge && humGauge) {
+              if (autoMode) {
+                // Realtime: show the most recent measurement
+                let last = data[data.length - 1];
+                lastTime = last.from;
                 setGaugeValue(tempGauge, last.temp);
                 setGaugeValue(humGauge, last.hum);
+              } else {
+                // Manual period: show the average over the selected range
+                let avgTemp = temp.reduce((a, b) => a + b, 0) / temp.length;
+                let avgHum  = hum.reduce((a, b) => a + b, 0) / hum.length;
+                setGaugeValue(tempGauge, avgTemp);
+                setGaugeValue(humGauge, avgHum);
               }
             }
           },
