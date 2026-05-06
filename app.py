@@ -76,6 +76,14 @@ def read_serial():
         buffer = ""
 
         while True:
+            if not RECEIVE_ENABLED:
+                try:
+                    ser.close()
+                except Exception:
+                    pass
+                print("Receive OFF -> serial reading paused")
+                break
+
             try:
                 chunk = ser.read(ser.in_waiting or 1).decode('utf-8', errors='ignore')
                 buffer += chunk
@@ -182,12 +190,29 @@ def save_to_db(batch_copy):
         (from_time, to_time, temp_avg, hum_avg, motion_avg)
         VALUES (%s, %s, %s, %s, %s)
         """
+        from_dt = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(from_time))
+        to_dt = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(to_time))
         temp_avg = round1(sum(temps) / len(temps))
         hum_avg = round1(sum(hums) / len(hums))
         motion_avg = round1(sum(motions) / len(motions))
+
+        # Guard against duplicate writes of the same aggregate row.
+        dedupe_query = """
+        SELECT id FROM sensor_data
+        WHERE from_time = %s AND to_time = %s
+          AND temp_avg = %s AND hum_avg = %s AND motion_avg = %s
+        LIMIT 1
+        """
+        cur.execute(dedupe_query, (from_dt, to_dt, temp_avg, hum_avg, motion_avg))
+        if cur.fetchone():
+            print("Skipped duplicate DB row")
+            with lock:
+                last_insert_time = time.time()
+            return
+
         cur.execute(query, (
-            time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(from_time)),
-            time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(to_time)),
+            from_dt,
+            to_dt,
             temp_avg,
             hum_avg,
             motion_avg
