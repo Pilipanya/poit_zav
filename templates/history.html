@@ -48,48 +48,53 @@
 
     <div class="p-6 max-w-7xl mx-auto space-y-6">
       <!-- FILTER CARD -->
-      <div
-        class="bg-white shadow rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-end"
-      >
-        <div>
-          <label class="text-sm text-gray-500">From</label>
-          <input type="datetime-local" id="from" class="border rounded p-2" />
-        </div>
+      <div class="bg-white shadow rounded-2xl p-4">
+        <div class="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-end">
+          <div class="flex flex-col flex-1 min-w-[160px]">
+            <label class="text-sm text-gray-500 mb-1">From</label>
+            <input type="datetime-local" id="from" class="border rounded p-2 w-full" />
+          </div>
 
-        <div>
-          <label class="text-sm text-gray-500">To</label>
-          <input type="datetime-local" id="to" class="border rounded p-2" />
-        </div>
+          <div class="flex flex-col flex-1 min-w-[160px]">
+            <label class="text-sm text-gray-500 mb-1">To</label>
+            <input type="datetime-local" id="to" class="border rounded p-2 w-full" />
+          </div>
 
-        <select id="sourceSelect" class="px-3 py-2 rounded">
-          <option value="db">Database</option>
-          <option value="file">File</option>
-        </select>
+          <div class="flex flex-col min-w-[120px]">
+            <label class="text-sm text-gray-500 mb-1">Source</label>
+            <select id="sourceSelect" class="border rounded px-3 py-2 w-full">
+              <option value="db">Database</option>
+              <option value="file">File</option>
+            </select>
+          </div>
 
-        <button
-          id="loadBtn"
-          onclick="loadDataManual()"
-          class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Load
-        </button>
+          <div class="flex gap-2 sm:items-end">
+            <button
+              id="loadBtn"
+              onclick="loadDataManual()"
+              class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full sm:w-auto"
+            >
+              Load
+            </button>
 
-        <button
-          id="autoBtn"
-          onclick="switchToAutoMode()"
-          class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-        >
-          Last 24h
-        </button>
+            <button
+              id="autoBtn"
+              onclick="switchToAutoMode()"
+              class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 w-full sm:w-auto"
+            >
+              Last 24h
+            </button>
+          </div>
 
-        <div
-          id="loading"
-          class="hidden flex items-center gap-2 text-sm text-gray-500"
-        >
           <div
-            class="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"
-          ></div>
-          Loading data...
+            id="loading"
+            class="hidden flex items-center gap-2 text-sm text-gray-500 sm:self-end"
+          >
+            <div
+              class="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"
+            ></div>
+            Loading data...
+          </div>
         </div>
       </div>
 
