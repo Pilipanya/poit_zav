@@ -30,8 +30,8 @@ config.read("config.cfg")
 app = Flask(__name__)
 
 
-def round3(value):
-    return round(float(value), 3)
+def round1(value):
+    return round(float(value), 1)
 
 
 def get_db():
@@ -153,9 +153,9 @@ def save_to_file(batch_copy):
         with open(FILE_PATH, "a") as f:
             f.write(
                 f"{from_time},{to_time},"
-                f"{round3(sum(temps)/len(temps))},"
-                f"{round3(sum(hums)/len(hums))},"
-                f"{round3(sum(motions)/len(motions))}\n"
+                f"{round1(sum(temps)/len(temps))},"
+                f"{round1(sum(hums)/len(hums))},"
+                f"{round1(sum(motions)/len(motions))}\n"
             )
 
         print(f"Saved batch of {len(batch_copy)} rows to FILE (aggregated)")
@@ -182,9 +182,9 @@ def save_to_db(batch_copy):
         (from_time, to_time, temp_avg, hum_avg, motion_avg)
         VALUES (%s, %s, %s, %s, %s)
         """
-        temp_avg = round3(sum(temps) / len(temps))
-        hum_avg = round3(sum(hums) / len(hums))
-        motion_avg = round3(sum(motions) / len(motions))
+        temp_avg = round1(sum(temps) / len(temps))
+        hum_avg = round1(sum(hums) / len(hums))
+        motion_avg = round1(sum(motions) / len(motions))
         cur.execute(query, (
             time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(from_time)),
             time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(to_time)),
@@ -250,9 +250,9 @@ def read_from_file(from_ts, to_ts):
                     result.append({
                         "from": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(from_t)),
                         "to": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(to_t)),
-                        "temp": round3(temp),
-                        "hum": round3(hum),
-                        "motion": round3(motion)
+                        "temp": round1(temp),
+                        "hum": round1(hum),
+                        "motion": round1(motion)
                     })
     except Exception as e:
         print("FILE READ error:", e)
@@ -354,9 +354,9 @@ def api_history():
         result.append({
             "from": str(r[1]),
             "to": str(r[2]),
-            "temp": round3(r[3]),
-            "hum": round3(r[4]),
-            "motion": round3(r[5])
+            "temp": round1(r[3]),
+            "hum": round1(r[4]),
+            "motion": round1(r[5])
         })
 
     return jsonify(result)

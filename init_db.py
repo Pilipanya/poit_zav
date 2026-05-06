@@ -25,16 +25,16 @@ def init_db():
             id INT AUTO_INCREMENT PRIMARY KEY,
             from_time DATETIME,
             to_time DATETIME,
-            temp_avg DECIMAL(10,3),
-            hum_avg DECIMAL(10,3),
-            motion_avg DECIMAL(10,3)
+            temp_avg DECIMAL(10,1),
+            hum_avg DECIMAL(10,1),
+            motion_avg DECIMAL(10,1)
         )
         """
 
         cur.execute(query)
-        cur.execute("ALTER TABLE sensor_data MODIFY temp_avg DECIMAL(10,3)")
-        cur.execute("ALTER TABLE sensor_data MODIFY hum_avg DECIMAL(10,3)")
-        cur.execute("ALTER TABLE sensor_data MODIFY motion_avg DECIMAL(10,3)")
+        cur.execute("ALTER TABLE sensor_data MODIFY temp_avg DECIMAL(10,1)")
+        cur.execute("ALTER TABLE sensor_data MODIFY hum_avg DECIMAL(10,1)")
+        cur.execute("ALTER TABLE sensor_data MODIFY motion_avg DECIMAL(10,1)")
         conn.commit()
 
         print("Table 'sensor_data' is ready.")

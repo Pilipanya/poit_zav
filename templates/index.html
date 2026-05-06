@@ -124,8 +124,8 @@
           return;
         }
 
-        tempEl.text(`${Number(payload.temp).toFixed(3)} °C`);
-        humEl.text(`${Number(payload.hum).toFixed(3)} %`);
+        tempEl.text(`${Number(payload.temp).toFixed(1)} °C`);
+        humEl.text(`${Number(payload.hum).toFixed(1)} %`);
 
         if (Number(payload.motion) >= 1) {
           motionEl

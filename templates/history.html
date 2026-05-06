@@ -116,7 +116,9 @@
         <table class="w-full text-sm">
           <thead class="bg-gray-100 sticky top-0">
             <tr>
-              <th class="p-2 text-left">Time</th>
+              <th class="p-2 text-left">Date</th>
+              <th class="p-2 text-left">Time From</th>
+              <th class="p-2 text-left">Time To</th>
               <th class="p-2">Temp</th>
               <th class="p-2">Hum</th>
               <th class="p-2">Motion</th>
@@ -138,40 +140,92 @@
       let loading = false;
       let tempGauge, humGauge;
 
-      function initGauges() {
-        tempGauge = new RadialGauge({
-          renderTo: "tempGauge",
-          width: 250,
-          height: 250,
-          units: "°C",
-          minValue: 0,
-          maxValue: 50,
-          majorTicks: ["0", "10", "20", "30", "40", "50"],
-          minorTicks: 2,
-          strokeTicks: true,
-          highlights: [{ from: 30, to: 50, color: "rgba(200,50,50,.75)" }],
-          colorPlate: "#fff",
-          borders: false,
-          needleType: "arrow",
-          animationDuration: 1000,
-        }).draw();
+      function setGaugeValue(gauge, value) {
+        if (!gauge) return;
 
-        humGauge = new RadialGauge({
-          renderTo: "humGauge",
-          width: 250,
-          height: 250,
-          units: "%",
-          minValue: 0,
-          maxValue: 100,
-          majorTicks: ["0", "20", "40", "60", "80", "100"],
-          minorTicks: 2,
-          strokeTicks: true,
-          highlights: [{ from: 70, to: 100, color: "rgba(50,50,200,.75)" }],
-          colorPlate: "#fff",
-          borders: false,
-          needleType: "arrow",
-          animationDuration: 1000,
-        }).draw();
+        if (typeof gauge.set === "function") {
+          gauge.set(Number(value));
+          return;
+        }
+
+        gauge.value = Number(value);
+      }
+
+      function initGauges() {
+        if (typeof RadialGauge !== "undefined") {
+          tempGauge = new RadialGauge({
+            renderTo: "tempGauge",
+            width: 250,
+            height: 250,
+            units: "°C",
+            minValue: 0,
+            maxValue: 50,
+            majorTicks: ["0", "10", "20", "30", "40", "50"],
+            minorTicks: 2,
+            strokeTicks: true,
+            highlights: [{ from: 30, to: 50, color: "rgba(200,50,50,.75)" }],
+            colorPlate: "#fff",
+            borders: false,
+            needleType: "arrow",
+            animationDuration: 1000,
+          }).draw();
+
+          humGauge = new RadialGauge({
+            renderTo: "humGauge",
+            width: 250,
+            height: 250,
+            units: "%",
+            minValue: 0,
+            maxValue: 100,
+            majorTicks: ["0", "20", "40", "60", "80", "100"],
+            minorTicks: 2,
+            strokeTicks: true,
+            highlights: [{ from: 70, to: 100, color: "rgba(50,50,200,.75)" }],
+            colorPlate: "#fff",
+            borders: false,
+            needleType: "arrow",
+            animationDuration: 1000,
+          }).draw();
+          return;
+        }
+
+        if (typeof Gauge !== "undefined") {
+          tempGauge = new Gauge(document.getElementById("tempGauge")).setOptions({
+            angle: 0.15,
+            lineWidth: 0.2,
+            pointer: { length: 0.55, strokeWidth: 0.04, color: "#111827" },
+            colorStart: "#ef4444",
+            colorStop: "#fca5a5",
+            strokeColor: "#e5e7eb",
+            generateGradient: true,
+          });
+          tempGauge.maxValue = 50;
+          tempGauge.setMinValue(0);
+          tempGauge.animationSpeed = 32;
+          tempGauge.set(0);
+
+          humGauge = new Gauge(document.getElementById("humGauge")).setOptions({
+            angle: 0.15,
+            lineWidth: 0.2,
+            pointer: { length: 0.55, strokeWidth: 0.04, color: "#111827" },
+            colorStart: "#3b82f6",
+            colorStop: "#93c5fd",
+            strokeColor: "#e5e7eb",
+            generateGradient: true,
+          });
+          humGauge.maxValue = 100;
+          humGauge.setMinValue(0);
+          humGauge.animationSpeed = 32;
+          humGauge.set(0);
+          return;
+        }
+
+        $("#tempGauge").closest(".bg-white").append(
+          '<p class="text-sm text-gray-500 mt-2">Gauge library is not loaded.</p>',
+        );
+        $("#humGauge").closest(".bg-white").append(
+          '<p class="text-sm text-gray-500 mt-2">Gauge library is not loaded.</p>',
+        );
       }
 
       function formatLocalTime(dateString) {
@@ -180,6 +234,24 @@
           year: "numeric",
           month: "2-digit",
           day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      }
+
+      function getDatePart(dateString) {
+        let d = new Date(dateString);
+        return d.toLocaleDateString("sk-SK", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
+      }
+
+      function getTimePart(dateString) {
+        let d = new Date(dateString);
+        return d.toLocaleTimeString("sk-SK", {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
@@ -334,10 +406,12 @@
               }
               html += `
                         <tr class="${bg}">
-                            <td class="p-2">${formatLocalTime(d.from)}</td>
-                      <td class="p-2 text-center">${Number(d.temp).toFixed(3)}</td>
-                      <td class="p-2 text-center">${Number(d.hum).toFixed(3)}</td>
-                      <td class="p-2 text-center">${Number(d.motion).toFixed(3)}</td>
+                            <td class="p-2">${getDatePart(d.from)}</td>
+                            <td class="p-2">${getTimePart(d.from)}</td>
+                            <td class="p-2">${getTimePart(d.to)}</td>
+                            <td class="p-2 text-center">${Number(d.temp).toFixed(1)}</td>
+                            <td class="p-2 text-center">${Number(d.hum).toFixed(1)}</td>
+                            <td class="p-2 text-center">${Number(d.motion).toFixed(1)}</td>
                         </tr>
                     `;
             });
@@ -350,8 +424,8 @@
               lastTime = last.from;
 
               if (tempGauge && humGauge) {
-                tempGauge.value = last.temp;
-                humGauge.value = last.hum;
+                setGaugeValue(tempGauge, last.temp);
+                setGaugeValue(humGauge, last.hum);
               }
             }
           },
