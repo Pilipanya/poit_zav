@@ -191,6 +191,8 @@
           fontTitleSize: 18,
           fontUnitsSize: 16,
           fontNumbersSize: 14,
+          valueInt: 2,
+          valueDec: 1,
         }).draw();
 
         humGauge = new RadialGauge({
@@ -229,6 +231,8 @@
           fontTitleSize: 18,
           fontUnitsSize: 16,
           fontNumbersSize: 14,
+          valueInt: 3,
+          valueDec: 1,
         }).draw();
       }
 
@@ -381,6 +385,7 @@
                   title: { text: "Time", standoff: 20 },
                   tickangle: -35,
                   automargin: true,
+                  nticks: 10,
                 },
                 yaxis: {
                   title: { text: "Value", standoff: 15 },
