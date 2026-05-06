@@ -378,17 +378,32 @@
           "/api/history",
           { from: from, to: to, source: source },
           function (data) {
-            let times = data.map((d) => formatLocalTime(d.from));
-            let temp = data.map((d) => Number(d.temp));
-            let hum = data.map((d) => Number(d.hum));
-            let motion = data.map((d) => Number(d.motion));
+            // Insert null gap when consecutive points are >= 5 minutes apart.
+            const GAP_MS = 5 * 60 * 1000;
+            let times = [], temp = [], hum = [], motion = [];
+            data.forEach((d, i) => {
+              if (i > 0) {
+                const prev = new Date(data[i - 1].from).getTime();
+                const curr = new Date(d.from).getTime();
+                if (curr - prev >= GAP_MS) {
+                  times.push(null);
+                  temp.push(null);
+                  hum.push(null);
+                  motion.push(null);
+                }
+              }
+              times.push(formatLocalTime(d.from));
+              temp.push(Number(d.temp));
+              hum.push(Number(d.hum));
+              motion.push(Number(d.motion));
+            });
 
             Plotly.react(
               "chart",
               [
-                { x: times, y: temp,   name: "Temp (°C)",   mode: "lines+markers", line: { color: "#ef4444" } },
-                { x: times, y: hum,    name: "Humidity (%)", mode: "lines+markers", line: { color: "#3b82f6" } },
-                { x: times, y: motion, name: "Motion",       mode: "lines+markers", line: { color: "#f59e0b" } },
+                { x: times, y: temp,   name: "Temp (°C)",    mode: "lines+markers", line: { color: "#ef4444" }, connectgaps: false },
+                { x: times, y: hum,    name: "Humidity (%)", mode: "lines+markers", line: { color: "#3b82f6" }, connectgaps: false },
+                { x: times, y: motion, name: "Motion",       mode: "lines+markers", line: { color: "#f59e0b" }, connectgaps: false },
               ],
               {
                 responsive: true,
@@ -427,7 +442,7 @@
                 bg = "bg-orange-100";
               }
               html += `
-                        <tr class="${bg}">
+                        <tr class="${bg} cursor-pointer hover:brightness-95" data-from="${d.from}">
                             <td class="p-2">${getDatePart(d.from)}</td>
                             <td class="p-2">${getTimePart(d.from)}</td>
                             <td class="p-2">${getTimePart(d.to)}</td>
@@ -439,6 +454,45 @@
             });
 
             $("#table").html(html);
+
+            // Double-click row → scroll to chart + pulse matching points.
+            $("#table tr").on("dblclick", function () {
+              const fromVal = $(this).data("from");
+              const label   = formatLocalTime(fromVal);
+
+              // Find index in the (possibly null-padded) times array.
+              const idx = times.indexOf(label);
+              if (idx === -1) return;
+
+              // Scroll chart into view.
+              document.getElementById("chart").scrollIntoView({ behavior: "smooth", block: "center" });
+
+              // Build per-point marker sizes and colors – highlight only the matched index.
+              const n = times.length;
+              const sizes  = Array(n).fill(6);
+              const colors = [
+                Array(n).fill("#ef4444"),
+                Array(n).fill("#3b82f6"),
+                Array(n).fill("#f59e0b"),
+              ];
+              sizes[idx] = 18;
+              colors[0][idx] = "#ff0000";
+              colors[1][idx] = "#0000ff";
+              colors[2][idx] = "#ff8c00";
+
+              Plotly.restyle("chart", {
+                "marker.size":  [sizes, sizes, sizes],
+                "marker.color": colors,
+              });
+
+              // Restore after 2 s.
+              setTimeout(() => {
+                Plotly.restyle("chart", {
+                  "marker.size":  [Array(n).fill(6), Array(n).fill(6), Array(n).fill(6)],
+                  "marker.color": ["#ef4444", "#3b82f6", "#f59e0b"],
+                });
+              }, 2000);
+            });
 
             if (data.length > 0 && tempGauge && humGauge) {
               if (autoMode) {
