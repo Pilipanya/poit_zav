@@ -442,7 +442,7 @@
                 bg = "bg-orange-100";
               }
               html += `
-                        <tr class="${bg} cursor-pointer hover:brightness-95" data-from="${d.from}">
+                        <tr class="${bg} cursor-pointer ${Number(d.motion) === 0 ? 'hover:bg-amber-200' : 'hover:brightness-95'}" data-from="${d.from}">
                             <td class="p-2">${getDatePart(d.from)}</td>
                             <td class="p-2">${getTimePart(d.from)}</td>
                             <td class="p-2">${getTimePart(d.to)}</td>
